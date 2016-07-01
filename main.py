@@ -4,8 +4,8 @@ import curses
 import os
 
 class Window():
-    def __init__(self,x, y, w, h):
-        self.win = curses.newwin(h, w, y, x)
+    def __init__(self, x, y, w, h):
+        self.win = curses.newwin(h,w,y,x)
         self.win.immedok(True)
 
 class CWindow():
@@ -44,35 +44,43 @@ class CWindow():
                 text += chr(c)
                 self.add_text(chr(c))
 
-def main(stdscr):
-    stdscr.clear()
-    curses.nonl()
-    stdscr.immedok(True)
-    stdscr.border(0)
-    com_win = CWindow()
-    com_win.set_text("test")
 
-    #No ESC Delay
-    stdscr.nodelay(True) #To handle esc
+class App():
+    def __init__(self):
+        pass
 
-    while True:
-        c = stdscr.getch()
-        if c == ord('q'):
-            return
-        elif c == ord(':'):
-            com_win.get_command(stdscr)
-        elif c == 27:
-            n = stdscr.getch()
-            if n == curses.ERR:
-                #Esc
-                com_win.set_text('esc')
-            else:
-                #Alt + n is pressed
-                com_win.set_text(chr(n))
-        elif c == ord('p'):
-            com_win.add_text('woo')
+    def initialize(self):
+        os.environ.setdefault('ESCDELAY', '25')
 
+    def startscr(self, screen):
+        self.screen = screen
+        self.screen.nodelay(True)
+        self.screen.clear()
+        self.screen.immedok(True)
+        self.screen.border()
+        self.command = CWindow()
+        self.loop()
+
+    def loop(self):
+        while True:
+            c = self.screen.getch()
+            if c == ord('q'):
+                return
+            elif c == ord(':'):
+                self.command.get_command(self.screen)
+            elif c == 27:
+                n = self.screen.getch()
+                if n == curses.ERR:
+                    #ESC
+                    self.command.set_text('esc')
+                else:
+                    #ALT + n
+                    self.command.set_text(chr(n))
+            elif c == ord('p'):
+                self.command.add_text('woo')
 
 if __name__ == "__main__":
-    os.environ.setdefault('ESCDELAY', '25')
-    wrapper(main)
+    app = App()
+    app.initialize()
+    wrapper(app.startscr)
+
