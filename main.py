@@ -44,6 +44,26 @@ class CWindow():
                 text += chr(c)
                 self.add_text(chr(c))
 
+class NormalMode():
+    def handle(self, app):
+        while True:
+            c = app.screen.getch()
+            if c == ord('q'):
+                return
+            elif c == ord(':'):
+                app.command.get_command(self.screen)
+            elif c == 27:
+                n = app.screen.getch()
+                if n == curses.ERR:
+                    #ESC
+                    app.command.set_text('esc')
+                else:
+                    #ALT + n
+                    app.command.set_text(chr(n))
+            elif c == ord('p'):
+                app.command.add_text('woo')
+
+
 
 class App():
     def __init__(self):
@@ -51,6 +71,7 @@ class App():
 
     def initialize(self):
         os.environ.setdefault('ESCDELAY', '25')
+        self.set_mode(NormalMode())
 
     def startscr(self, screen):
         self.screen = screen
@@ -61,23 +82,11 @@ class App():
         self.command = CWindow()
         self.loop()
 
+    def set_mode(self, mode):
+        self.mode = mode
+
     def loop(self):
-        while True:
-            c = self.screen.getch()
-            if c == ord('q'):
-                return
-            elif c == ord(':'):
-                self.command.get_command(self.screen)
-            elif c == 27:
-                n = self.screen.getch()
-                if n == curses.ERR:
-                    #ESC
-                    self.command.set_text('esc')
-                else:
-                    #ALT + n
-                    self.command.set_text(chr(n))
-            elif c == ord('p'):
-                self.command.add_text('woo')
+        self.mode.handle(self)
 
 if __name__ == "__main__":
     app = App()
