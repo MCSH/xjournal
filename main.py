@@ -27,10 +27,21 @@ class CWindow():
 
 
 class CommandMode():
+
+    def command(self, app, text):
+        loc = text.find(' ')
+        command = text
+        argv = ""
+        if loc != -1:
+            command = text[:loc]
+            argv = text[loc:]
+        app.command(command, argv=argv)
+
     def handle(self, app):
         cwindow = app.cwin
         bak_text = cwindow.text
         text = ""
+        cwindow.set_text("")
         while True:
             c = app.screen.getch()
             if c == 27:
@@ -42,13 +53,14 @@ class CommandMode():
                     return
             elif c == curses.KEY_ENTER or c == 10 or c == 13:
                 app.set_mode('normal')
-                app.command(text)
+                self.command(app, text)
                 return
             elif c in range(0,128):
                 text += chr(c)
                 cwindow.add_text(chr(c))
 
 class NormalMode():
+
     def handle(self, app):
         while True:
             c = app.screen.getch()
@@ -86,9 +98,10 @@ class App():
             app.run = False
         self.add_command('quit',f)
         def f(app, **kwargs):
-            if 'text' not in kwargs:
-                return
-            app.cwin.set_text( kwargs.get('text'))
+            if 'text' in kwargs:
+                app.cwin.set_text( kwargs.get('text'))
+            elif 'argv' in kwargs:
+                app.cwin.set_text( kwargs.get('argv'))
         self.add_command('write', f)
 
     def startscr(self, screen):
@@ -104,7 +117,9 @@ class App():
         self.commands.update({command: func})
 
     def command(self, command, **kwargs):
-        self.commands.get(command)(self,**kwargs)
+        f = self.commands.get(command)
+        if f !=None:
+            f(self,**kwargs)
 
     def add_mode(self, mode, tag):
         self.modes.update({tag: mode})
