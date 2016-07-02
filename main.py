@@ -4,30 +4,54 @@ import curses
 import os
 
 class Window():
-    def __init__(self, x, y, w, h):
+    def __init__(self, x, y, w, h, wintype = 0):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.wintype = wintype
         self.win = curses.newwin(h,w,y,x)
         self.win.immedok(True)
-
-class CWindow():
-    def __init__(self):
-        self.window = Window(1, curses.LINES - 4, curses.COLS - 2, 3)
-        self.win = self.window.win
-        self.win.border()
+        self.clean()
         self.text = ""
 
+    def clean(self):
+        self.win.erase()
+        self.border()
+
+    def border(self):
+        if self.wintype == 0:
+            self.win.border(' ', ' ', 0, ' ', curses.ACS_HLINE, curses.ACS_HLINE, ' ', ' ')
+
     def set_text(self, text):
-        self.win.clear()
-        self.win.border()
-        self.win.addstr(1,1, text)
+        self.clean()
         self.text = text
+        self.check_size()
+        self.win.addstr(1,0, text)
 
     def add_text(self, text):
         self.text += text
-        self.set_text(self.text)
+        self.check_size()
+        if not self.check_size():
+            self.set_text(self.text)
+        else:
+            self.win.addstr(text)
+
+    def check_size(self):
+        if self.wintype == 0:
+            x_mod = 0
+            y_mod = 1
+        if( len(self.text) / (self.w-x_mod)  != self.h -y_mod):
+            self.h = int(len(self.text) / (self.w-x_mod)) + y_mod+1
+            self.y = int(curses.LINES - self.h)
+            self.win.mvwin(self.y, self.x)
+            self.win.resize(self.h, self.w)
+            self.clean()
+            return False
+        return True
 
 
 class CommandMode():
-
     def command(self, app, text):
         loc = text.find(' ')
         command = text
@@ -60,7 +84,6 @@ class CommandMode():
                 cwindow.add_text(chr(c))
 
 class NormalMode():
-
     def handle(self, app):
         while True:
             c = app.screen.getch()
@@ -79,7 +102,7 @@ class NormalMode():
                     #ALT + n
                     app.cwin.set_text(chr(n))
             elif c == ord('p'):
-                app.command('write', text = 'Yolo')
+                app.command('write', argv = 'Yolo')
 
 
 class App():
@@ -87,7 +110,6 @@ class App():
         self.run = True
         self.modes = {}
         self.commands = {}
-        pass
 
     def initialize(self):
         os.environ.setdefault('ESCDELAY', '25')
@@ -98,19 +120,16 @@ class App():
             app.run = False
         self.add_command('quit',f)
         def f(app, **kwargs):
-            if 'text' in kwargs:
-                app.cwin.set_text( kwargs.get('text'))
-            elif 'argv' in kwargs:
+            if 'argv' in kwargs:
                 app.cwin.set_text( kwargs.get('argv'))
         self.add_command('write', f)
 
     def startscr(self, screen):
         self.screen = screen
         self.screen.nodelay(True)
-        self.screen.clear()
         self.screen.immedok(True)
-        self.screen.border()
-        self.cwin = CWindow()
+        self.screen.clear()
+        self.cwin  = Window(0, curses.LINES - 2, curses.COLS -1 , 2)
         self.loop()
 
     def add_command(self, command, func):
